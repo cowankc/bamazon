@@ -1,5 +1,6 @@
 let mysql = require("mysql");
 let inquirer = require("inquirer");
+let divider = "\n---------------------------------------------------------------------\n"
 
 let connection = mysql.createConnection({
     host: "localhost",
@@ -15,6 +16,7 @@ connection.connect(function(err) {
 })
 
 function displayMenu() {
+  console.log(divider)
     inquirer
     .prompt({
       name: "menu",
@@ -38,11 +40,13 @@ function displayMenu() {
         connection.end();
       }
     });
+  console.log(divider)
 }
 
 function viewProducts() {
     connection.query("SELECT * FROM products", function(err, results) {
         if (err) throw err;
+        console.log(divider + "All Products" + divider)
         for (let i = 0; i < results.length; i++) {
             console.log(
                 results[i].item_id + " " 
@@ -50,13 +54,15 @@ function viewProducts() {
                 + "$" + results[i].price + " "
                 + "Amount in Stock: " + results[i].stock_quantity + "\n");
             }
+            console.log(divider)
+            displayMenu();
     })
-   displayMenu();
 }       
 
 function lowInventory() {
     connection.query("SELECT * FROM products", function(err, results) {
         if (err) throw err;
+        console.log(divider + "Low Products" + divider)
         for (let i = 0; i < results.length; i++) {
             if(results[i].stock_quantity < 5) {
             console.log(
@@ -66,50 +72,57 @@ function lowInventory() {
                 + "Amount in Stock: " + results[i].stock_quantity + "\n");
             }
         }
+        console.log(divider)
+        displayMenu();
     })
-   displayMenu();
 }
 
 function addInventory() {
-    connection.query("SELECT * FROM products", function(err, results){
-        inquirer
-        .prompt([
-            {
-                name: "itemName",
-                type: "rawlist",
-                choices: function (){
-                    let choiceArray = [];
-                    for (let i = 0; i < results.length; i++) {
-                        choiceArray.push(results[i].product_name);
-                    }
-                    return choiceArray;
-                },
-                message: "Please select the item ID of the item you would like to add too."
-            },
-            {
-                name: "quantity",
-                type: "input",
-                message: "How much would you be adding??"
+  connection.query("SELECT * FROM products", function(err, results){
+    inquirer
+      .prompt([
+        {
+          name: "itemNumber",
+          type: "input",
+          message: "Please enter the item ID of the item you would like to add too.",
+          validate: function(value) {
+            if (isNaN(value) === false) {
+              return true;
+              }
+            return false;
             }
+        },
+        {
+          name: "quantity",
+          type: "input",
+          message: "How many will you be adding?"
+        }
         ])
-        .then(function(answer) {
-            let chosenItem = answer.choice
-            let chosenQuantity =answer.quantity
-           updateInventory(chosenItem, chosenQuantity)
+      .then(function(input) {
+        let chosenItem = input.itemNumber
+        let chosenQuantity =input.quantity
+        let queryStr = "SELECT * FROM products WHERE ?";
+        connection.query(queryStr, {item_id: chosenItem}, function(err, data) {
+          if (err) throw err;
+          if (data.length === 0) {
+            console.log("ERROR: Please use an Item ID from the product list.");
+            displayMenu();
+            }
+          else {
+            let productData = data[0];
+            let updateQueryStr ="UPDATE products SET stock_quantity = " + (productData.stock_quantity + chosenQuantity) + " WHERE item_id = "  + chosenItem;
+            connection.query(updateQueryStr, function(err, data) {
+              if (err) throw err;
+              console.log("You succefully added " + chosenQuantity + " more to item " + chosenItem + "!");
+              console.log(divider);
+              displayMenu();
+              })
+            }
+          })          
         })
     })
 }
 
-function updateInventory(name, quantity){
-    connection.query("SELECT * FROM products WHERE product_name ? ",
-    [{product_name: name }],
-    function(err,res){
-		if(err){console.log(err)};
-		connection.query("UPDATE products SET stock_quantity = stock_quantity + " + quantity + "WHERE product_name =" + name);
-
-		displayMenu();
-	});
-};
 
 
 function addProduct() {
@@ -158,7 +171,9 @@ function addProduct() {
         },
         function(err) {
           if (err) throw err;
+          console.log(divider)
           console.log("Your items were successfully added!");
+          console.log(divider)
           displayMenu();
         }
       );
