@@ -110,7 +110,8 @@ function addInventory() {
             }
           else {
             let productData = data[0];
-            let updateQueryStr ="UPDATE products SET stock_quantity = " + (productData.stock_quantity + chosenQuantity) + " WHERE item_id = "  + chosenItem;
+            let newQuantity = parseInt(productData.stock_quantity) + parseInt(chosenQuantity)
+            let updateQueryStr ="UPDATE products SET stock_quantity = "+ newQuantity  + " WHERE item_id = "  + chosenItem;
             connection.query(updateQueryStr, function(err, data) {
               if (err) throw err;
               console.log("You succefully added " + chosenQuantity + " more to item " + chosenItem + "!");
